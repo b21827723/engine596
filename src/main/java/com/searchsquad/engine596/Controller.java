@@ -1,6 +1,5 @@
 package com.searchsquad.engine596;
 
-import com.searchsquad.engine596.DTO.SearchRequest;
 import com.searchsquad.engine596.DTO.SearchResult;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -49,11 +48,11 @@ public class Controller {
     private static final String CISI_REL_DIRECTORY = ROOT_DIR + "CISI_Dataset/Relations";
 
 
-    @PostMapping("/search")
-    public ResponseEntity<List<SearchResult>> searchDocuments(@RequestBody SearchRequest searchRequest, @RequestParam String dataset) {
+    @GetMapping("/search")
+    public ResponseEntity<List<SearchResult>> searchDocuments(@RequestParam String fieldName,
+                                                              @RequestParam String queryText,
+                                                              @RequestParam String dataset) {
         try {
-            String fieldName = searchRequest.getFieldName();
-            String queryText = searchRequest.getQueryText();
 
             List<SearchResult> searchResults = getSearchResults(fieldName, queryText, dataset, DEFAULT_NUM_RESULTS);
 
