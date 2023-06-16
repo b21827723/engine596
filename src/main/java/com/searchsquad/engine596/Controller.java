@@ -234,10 +234,10 @@ public class Controller {
             }
 
         }
-        System.out.println("Average P@1: " + (matchingCount_at_1 / num_samples_at1) + " over " + num_samples_at1 + " samples.");
-        System.out.println("Average P@5: " + (matchingCount_at_5 / (num_samples_at5 * 5)) + " over " + num_samples_at5 + " samples.");
-        System.out.println("Average P@10: " + (matchingCount_at_10 / (num_samples_at10 * 10)) + " over " + num_samples_at10 + " samples.");
-        System.out.println("Average Recall: " + (totalMatchingCount / totalRelevantDocNumber) + " over " + query_texts.size() + " samples.");
+        System.out.println("Average P@1: " + String.format("%.2f%%", (matchingCount_at_1 / num_samples_at1 * 100)) + " over " + num_samples_at1 + " samples.");
+        System.out.println("Average P@5: " + String.format("%.2f%%", (matchingCount_at_5 / (num_samples_at5 * 5) * 100)) + " over " + num_samples_at5 + " samples.");
+        System.out.println("Average P@10: " + String.format("%.2f%%", (matchingCount_at_10 / (num_samples_at10 * 10) * 100)) + " over " + num_samples_at10 + " samples.");
+        System.out.println("Average Recall: " + String.format("%.2f%%", (totalMatchingCount / totalRelevantDocNumber * 100)) + " over " + query_texts.size() + " samples.");
     }
 
     public void createIndex(String index_dir, String data_dir) throws IOException {
