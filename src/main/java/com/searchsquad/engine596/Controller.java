@@ -126,7 +126,89 @@ public class Controller {
 
     // Takes dataset name as parameter. Path variables associated with datasets must be defined at the top of the class.
     @GetMapping("/index")
-    public void createIndex() throws IOException {
+    public ResponseEntity<String> createIndex(@RequestParam String dataset) throws IOException {
+
+        if (dataset.equalsIgnoreCase("AAPR")) {
+            createIndex(AAPR_INDEX_DIRECTORY, AAPR_DATA_DIRECTORY);
+        } else if (dataset.equalsIgnoreCase("CISI")) {
+            createIndex(CISI_INDEX_DIRECTORY, CISI_DATA_DIRECTORY);
+        } else {
+            return new ResponseEntity<>("Invalid dataset name", HttpStatus.BAD_REQUEST);
+        }
+
+        return new ResponseEntity<>("Index created successfully for " + dataset + " dataset", HttpStatus.OK);
+
+    }
+
+    @GetMapping("/eval")
+    public void evalCISI() throws IOException, ParseException {
+
+        List<String> query_texts = new ArrayList<>();
+        List<List<String>> doc_id_lists = new ArrayList<>();
+
+        // Read the JSON data from the file
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new FileReader(CISI_REL_DIRECTORY + "/cisi_relations.json"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Parse the JSON data
+        JSONArray jsonArray = new JSONArray(sb.toString());
+
+        // Iterate over the JSON objects and get relations
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+            String query_text = jsonObject.getString("query_text");
+            query_texts.add(query_text);
+
+            // Every query has relevant documents, given as an array of doc ids
+            JSONArray doc_id_list = jsonObject.getJSONArray("doc_id_list");
+
+            List<String> doc_ids = new ArrayList<>();
+            for (int j = 0; j < doc_id_list.length(); j++){
+                Object obj = doc_id_list.get(j);
+                String doc_id = obj.toString();
+                doc_ids.add(doc_id);
+            }
+            doc_id_lists.add(doc_ids);
+
+        }
+        System.out.println("CISI Relations are retrieved successfully.");
+
+        // Evaluating the system
+        for (int i = 0; i < query_texts.size(); i++) {
+            String query_text = query_texts.get(i);
+            List<String> doc_id_list = doc_id_lists.get(i);
+
+            List<SearchResult> search_result = getSearchResults("text", query_text, "CISI");
+
+            int matchingCount = 0;
+            for (SearchResult result : search_result) {
+                if (doc_id_list.contains(result.getId())) {
+                    matchingCount++;
+                }
+            }
+
+            int nonMatchingCount = search_result.size() - matchingCount;
+
+            System.out.println("Query Text: " + query_text);
+            System.out.println("Matching Results: " + matchingCount);
+            System.out.println("Non-Matching Results: " + nonMatchingCount);
+            System.out.println("------------------------------------");
+            System.out.println("------------------------------------");
+        }
+
+
+        System.out.println("Average R@10: ...");
+    }
+
+    public void createIndex(String index_dir, String data_dir) throws IOException {
 
         // Set up Lucene index directory
         Directory indexDirectory = FSDirectory.open(Paths.get(index_dir));
