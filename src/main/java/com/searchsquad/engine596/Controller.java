@@ -76,8 +76,8 @@ public class Controller {
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
 
-        Similarity similarity = new BM25Similarity(); //ClassicSimilarity();
-        indexSearcher.setSimilarity(similarity);
+        //Similarity similarity = new BM25Similarity(); //ClassicSimilarity();
+        //indexSearcher.setSimilarity(similarity);
 
         return indexSearcher;
     }
@@ -190,6 +190,14 @@ public class Controller {
         }
         System.out.println("CISI Relations are retrieved successfully.");
 
+        double R_at_1 = 0.0;
+        double R_at_5 = 0.0;
+        double R_at_10 = 0.0;
+
+        double num_samples_R1 = 0;
+        double num_samples_R5 = 0;
+        double num_samples_R10 = 0;
+
         double precision_tot = 0.0;
         // Evaluating the system
         for (int i = 0; i < query_texts.size(); i++) {
@@ -198,29 +206,75 @@ public class Controller {
 
             List<SearchResult> search_result = getSearchResults("text", query_text, "CISI");
 
+
             int matchingCount = 0;
+            int matchingCount_at_5 = 0;
+            int matchingCount_at_1 = 0;
+            double num_relevant = doc_id_list.size();
+
+            int result_idx = 0;
             for (SearchResult result : search_result) {
+                result_idx++;
+                // Debug:
+                // System.out.println(result.getTitle());
                 if (doc_id_list.contains(result.getId())) {
                     matchingCount++;
+
+                    if(result_idx == 1) {
+                        matchingCount_at_1++;
+                        matchingCount_at_5++;
+                    } else if(result_idx <= 5){
+                        matchingCount_at_5++;
+                    }
                 }
             }
 
+
             int nonMatchingCount = search_result.size() - matchingCount;
             double precision = (double) matchingCount / (double) search_result.size();
+
             precision_tot += precision;
-            double num_relevant = doc_id_list.size();
+
+            if(matchingCount_at_5 > 5){
+                throw new RuntimeException("Something is wrong with matching count @5.");
+            }
+            if(matchingCount_at_1 > 1){
+                throw new RuntimeException("Something is wrong with matching count @1.");
+            }
+
+            if(num_relevant >= 10){
+                R_at_10 += matchingCount / 10.0;
+                num_samples_R10 += 1;
+                R_at_5 += matchingCount_at_5 / 5.0;
+                num_samples_R5 += 1;
+                R_at_1 += (double) matchingCount_at_1;
+                num_samples_R1 += 1;
+            } else if(num_relevant >= 5){
+                R_at_5 += matchingCount_at_5 / 5.0;
+                num_samples_R5 += 1;
+                R_at_1 += (double) matchingCount_at_1;
+                num_samples_R1 += 1;
+            } else {
+                R_at_1 += (double) matchingCount_at_1;
+                num_samples_R1 += 1;
+            }
 
             System.out.println("Query Text: " + query_text);
             System.out.println("Total Relevant Docs: " + num_relevant);
             System.out.println("Matching Results: " + matchingCount);
             System.out.println("Non-Matching Results: " + nonMatchingCount);
             System.out.println("Precision: " + precision);
+            System.out.println("R@10: " + R_at_10);
+            System.out.println("R@5: " + R_at_5);
+            System.out.println("R@1: " + R_at_1);
             System.out.println("------------------------------------");
             System.out.println("------------------------------------");
         }
 
-        System.out.println("Average P@10: " + precision_tot/query_texts.size());
-        System.out.println("Average R@10: ...");
+        System.out.println("Average R@10: " + R_at_10 / num_samples_R10 + " out of " + num_samples_R10 + " samples.");
+        System.out.println("Average R@5: " + R_at_5 / num_samples_R5 + " out of " + num_samples_R5 + " samples.");
+        System.out.println("Average R@1: " + R_at_1 / num_samples_R1 + " out of " + num_samples_R1 + " samples.");
+        System.out.println("Average Precision: " + precision_tot/query_texts.size());
     }
 
     public void createIndex(String index_dir, String data_dir) throws IOException {
