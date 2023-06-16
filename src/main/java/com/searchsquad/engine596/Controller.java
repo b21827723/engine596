@@ -40,11 +40,12 @@ public class Controller {
 
     private static final int NUM_RESULTS = 10;
 
-    private static final String AAPR_INDEX_DIRECTORY = "/Users/bartu/Desktop/AAPR_Index";
-    private static final String AAPR_DATA_DIRECTORY = "/Users/bartu/Desktop/AAPR_Dataset";
-    private static final String CISI_INDEX_DIRECTORY = "/Users/bartu/Desktop/CISI_Index";
-    private static final String CISI_DATA_DIRECTORY = "/Users/bartu/Desktop/CISI_Dataset";
-    private static final String CISI_REL_DIRECTORY = "/Users/bartu/Desktop/CISI_Dataset/Relations";
+    private static final String ROOT_DIR = "/Users/bartu/Desktop/";
+    private static final String AAPR_INDEX_DIRECTORY = ROOT_DIR + "AAPR_Index";
+    private static final String AAPR_DATA_DIRECTORY = ROOT_DIR + "AAPR_Dataset";
+    private static final String CISI_INDEX_DIRECTORY = ROOT_DIR + "CISI_Index";
+    private static final String CISI_DATA_DIRECTORY = ROOT_DIR + "CISI_Dataset";
+    private static final String CISI_REL_DIRECTORY = ROOT_DIR + "CISI_Dataset/Relations";
 
 
     @PostMapping("/search")
