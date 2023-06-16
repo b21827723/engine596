@@ -11,6 +11,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -28,9 +29,9 @@ import org.springframework.web.bind.annotation.*;
 import java.io.*;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
-
+import java.util.Map;
 
 
 @RestController
@@ -53,11 +54,20 @@ public class Controller {
             IndexReader indexReader = DirectoryReader.open(indexDirectory);
             IndexSearcher indexSearcher = new IndexSearcher(indexReader);
 
-            // Create Lucene query parser and specify the field to search
-            QueryParser queryParser = new QueryParser(fieldName, new StandardAnalyzer());
-
-            // Create Lucene multi-field query parser and specify fields to search
-            //MultiFieldQueryParser queryParser = new MultiFieldQueryParser(new String[]{"title", "abstract", "text"}, new StandardAnalyzer());
+            QueryParser queryParser;
+            if (fieldName.equalsIgnoreCase("title") || fieldName.equalsIgnoreCase("abstract")) {
+                // Create Lucene query parser and specify the field to search
+                queryParser = new QueryParser(fieldName, new StandardAnalyzer());
+            } else if (fieldName.equalsIgnoreCase("text")) {
+                // Create a custom query parser for searching all fields with field weights
+                Map<String, Float> fieldWeights = new HashMap<>();
+                fieldWeights.put("title", 4.0f);
+                fieldWeights.put("abstract", 3.0f);
+                fieldWeights.put("text", 2.0f);
+                queryParser = new MultiFieldQueryParser(new String[]{"title", "abstract", "text"}, new StandardAnalyzer(), fieldWeights);
+            } else {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
 
             // Parse the user query text
             Query query = queryParser.parse(QueryParser.escape(queryText));
