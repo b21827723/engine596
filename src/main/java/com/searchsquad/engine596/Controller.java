@@ -19,12 +19,8 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.search.similarities.ClassicSimilarity;
-import org.apache.lucene.search.similarities.Similarity;
-import org.apache.lucene.search.similarities.BM25Similarity;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -43,9 +39,9 @@ import java.util.Map;
 @RestController
 public class Controller {
 
-    private static final int NUM_RESULTS = 10;
+    private static final int DEFAULT_NUM_RESULTS = 10;
 
-    private static final String ROOT_DIR = "/Users/bartu/Desktop/";
+    private static final String ROOT_DIR = "/Users/cihadozcan/Desktop/";
     private static final String AAPR_INDEX_DIRECTORY = ROOT_DIR + "AAPR_Index";
     private static final String AAPR_DATA_DIRECTORY = ROOT_DIR + "AAPR_Dataset";
     private static final String CISI_INDEX_DIRECTORY = ROOT_DIR + "CISI_Index";
@@ -59,7 +55,7 @@ public class Controller {
             String fieldName = searchRequest.getFieldName();
             String queryText = searchRequest.getQueryText();
 
-            List<SearchResult> searchResults = getSearchResults(fieldName, queryText, dataset, NUM_RESULTS);
+            List<SearchResult> searchResults = getSearchResults(fieldName, queryText, dataset, DEFAULT_NUM_RESULTS);
 
             if (searchResults == null) return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 
@@ -74,12 +70,7 @@ public class Controller {
     private static IndexSearcher getIndexSearcher(String indexPath) throws IOException {
         Directory indexDirectory = FSDirectory.open(Paths.get(indexPath));
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
-        IndexSearcher indexSearcher = new IndexSearcher(indexReader);
-
-        //Similarity similarity = new BM25Similarity(); //ClassicSimilarity();
-        //indexSearcher.setSimilarity(similarity);
-
-        return indexSearcher;
+        return new IndexSearcher(indexReader);
     }
 
     private static List<SearchResult> getSearchResults(String fieldName, String queryText, String dataset, int num_results) throws ParseException, IOException {
@@ -190,116 +181,63 @@ public class Controller {
         }
         System.out.println("CISI Relations are retrieved successfully.");
 
-        double P_at_1 = 0.0;
-        double P_at_5 = 0.0;
-        double P_at_10 = 0.0;
+        long num_samples_at1 = 0;
+        long num_samples_at5 = 0;
+        long num_samples_at10 = 0;
 
-        double R_at_1 = 0.0;
-        double R_at_5 = 0.0;
-        double R_at_10 = 0.0;
+        double matchingCount_at_10 = 0;
+        double matchingCount_at_5 = 0;
+        double matchingCount_at_1 = 0;
+        double totalMatchingCount = 0;
+        long totalRelevantDocNumber = 0;
 
-        double num_samples_at1 = 0;
-        double num_samples_at5 = 0;
-        double num_samples_at10 = 0;
 
-        double precision_tot = 0.0;
-        double recall_tot = 0.0;
         // Evaluating the system
         for (int i = 0; i < query_texts.size(); i++) {
             String query_text = query_texts.get(i);
             List<String> doc_id_list = doc_id_lists.get(i);
+            int queryRelevantDocNumber = doc_id_list.size();
+            totalRelevantDocNumber += queryRelevantDocNumber;
 
-            List<SearchResult> search_result = getSearchResults("text", query_text, "CISI", NUM_RESULTS);
+            List<SearchResult> search_results = getSearchResults("text", query_text, "CISI", queryRelevantDocNumber);
 
             int matchingCount = 0;
-            int matchingCount_at_5 = 0;
-            int matchingCount_at_1 = 0;
-            double num_relevant = doc_id_list.size();
 
             int result_idx = 0;
-            for (SearchResult result : search_result) {
+            for (SearchResult result : search_results) {
                 result_idx++;
-                // Debug:
-                // System.out.println(result.getTitle());
                 if (doc_id_list.contains(result.getId())) {
                     matchingCount++;
-
-                    if(result_idx == 1) {
+                    if (result_idx == 1) {
                         matchingCount_at_1++;
+                    }
+                    if (result_idx <= 5) {
                         matchingCount_at_5++;
-                    } else if(result_idx <= 5){
-                        matchingCount_at_5++;
+                    }
+                    if (result_idx <= 10) {
+                        matchingCount_at_10++;
                     }
                 }
             }
 
 
-            int nonMatchingCount = search_result.size() - matchingCount;
-            double precision = (double) matchingCount / (double) search_result.size();
-
-            precision_tot += precision;
-
-            if(matchingCount_at_5 > 5){
-                throw new RuntimeException("Something is wrong with matching count @5.");
-            }
-            if(matchingCount_at_1 > 1){
-                throw new RuntimeException("Something is wrong with matching count @1.");
-            }
-
-            R_at_10 = matchingCount / num_relevant;
-            R_at_5 = matchingCount_at_5 / num_relevant;
-            R_at_1 = matchingCount_at_1 / num_relevant;
-
-            if(num_relevant >= 10){
-                P_at_10 += matchingCount / 10.0;
+            totalMatchingCount += matchingCount;
+            if(queryRelevantDocNumber >= 10){
                 num_samples_at10 += 1;
-                P_at_5 += matchingCount_at_5 / 5.0;
                 num_samples_at5 += 1;
-                P_at_1 += (double) matchingCount_at_1;
                 num_samples_at1 += 1;
-            } else if(num_relevant >= 5){
-                P_at_5 += matchingCount_at_5 / 5.0;
+            } else if(queryRelevantDocNumber >= 5){
                 num_samples_at5 += 1;
-                P_at_1 += (double) matchingCount_at_1;
                 num_samples_at1 += 1;
             } else {
-                P_at_1 += (double) matchingCount_at_1;
                 num_samples_at1 += 1;
             }
 
-            // Average Recall ---------
-            List<SearchResult> search_result_at_rel = getSearchResults("text", query_text, "CISI", (int) num_relevant);
-            int matchingCount_recall = 0;
-
-            for (SearchResult result : search_result) {
-                if (doc_id_list.contains(result.getId())) {
-                    matchingCount_recall++;
-                }
-            }
-            double recall = (double) matchingCount_recall / num_relevant;
-            recall_tot += recall;
-
-            // ------------------------
-
-            System.out.println("Query Text: " + query_text);
-            System.out.println("Total Relevant Docs: " + num_relevant);
-            System.out.println("Matching Results: " + matchingCount);
-            System.out.println("Non-Matching Results: " + nonMatchingCount);
-            System.out.println("Precision: " + precision);
-            System.out.println("Recall: " + recall);
-            System.out.println("------------------------------------");
-            System.out.println("------------------------------------");
         }
-
-        System.out.println("Average R@10: " + R_at_10 / query_texts.size() );
-        System.out.println("Average R@5: " + R_at_5 / query_texts.size()  );
-        System.out.println("Average R@1: " + R_at_1 / query_texts.size()  );
-
-        System.out.println("Average P@10: " + P_at_10 / num_samples_at10 + " over " + num_samples_at10 + " samples.");
-        System.out.println("Average P@5: " + P_at_5 / num_samples_at5 + " over " + num_samples_at5 + " samples.");
-        System.out.println("Average P@1: " + P_at_1 / num_samples_at1 + " over " + num_samples_at1 + " samples.");
-        System.out.println("Average Precision: " + precision_tot/query_texts.size() + " over " + query_texts.size() + " samples.");
-        System.out.println("Average Recall: " + recall_tot/query_texts.size() + " over " + query_texts.size() + " samples.");
+        System.out.println("Average P@1: " + (matchingCount_at_1 / num_samples_at1) + " over " + num_samples_at1 + " samples.");
+        System.out.println("Average P@5: " + (matchingCount_at_5 / (num_samples_at5 * 5)) + " over " + num_samples_at5 + " samples.");
+        System.out.println("Average P@10: " + (matchingCount_at_10 / (num_samples_at10 * 10)) + " over " + num_samples_at10 + " samples.");
+        System.out.println("Average Recall: " + (totalMatchingCount / totalRelevantDocNumber) + " over " + query_texts.size() + " samples.");
     }
 
     public void createIndex(String index_dir, String data_dir) throws IOException {
