@@ -19,8 +19,12 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.search.similarities.ClassicSimilarity;
+import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.BM25Similarity;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -41,7 +45,7 @@ public class Controller {
 
     private static final int NUM_RESULTS = 10;
 
-    private static final String ROOT_DIR = "/Users/cihadozcan/Desktop/";
+    private static final String ROOT_DIR = "/Users/bartu/Desktop/";
     private static final String AAPR_INDEX_DIRECTORY = ROOT_DIR + "AAPR_Index";
     private static final String AAPR_DATA_DIRECTORY = ROOT_DIR + "AAPR_Dataset";
     private static final String CISI_INDEX_DIRECTORY = ROOT_DIR + "CISI_Index";
@@ -70,7 +74,12 @@ public class Controller {
     private static IndexSearcher getIndexSearcher(String indexPath) throws IOException {
         Directory indexDirectory = FSDirectory.open(Paths.get(indexPath));
         IndexReader indexReader = DirectoryReader.open(indexDirectory);
-        return new IndexSearcher(indexReader);
+        IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+
+        Similarity similarity = new BM25Similarity(); //ClassicSimilarity();
+        indexSearcher.setSimilarity(similarity);
+
+        return indexSearcher;
     }
 
     private static List<SearchResult> getSearchResults(String fieldName, String queryText, String dataset) throws ParseException, IOException {
@@ -181,6 +190,7 @@ public class Controller {
         }
         System.out.println("CISI Relations are retrieved successfully.");
 
+        double precision_tot = 0.0;
         // Evaluating the system
         for (int i = 0; i < query_texts.size(); i++) {
             String query_text = query_texts.get(i);
@@ -196,15 +206,20 @@ public class Controller {
             }
 
             int nonMatchingCount = search_result.size() - matchingCount;
+            double precision = (double) matchingCount / (double) search_result.size();
+            precision_tot += precision;
+            double num_relevant = doc_id_list.size();
 
             System.out.println("Query Text: " + query_text);
+            System.out.println("Total Relevant Docs: " + num_relevant);
             System.out.println("Matching Results: " + matchingCount);
             System.out.println("Non-Matching Results: " + nonMatchingCount);
+            System.out.println("Precision: " + precision);
             System.out.println("------------------------------------");
             System.out.println("------------------------------------");
         }
 
-
+        System.out.println("Average P@10: " + precision_tot/query_texts.size());
         System.out.println("Average R@10: ...");
     }
 
