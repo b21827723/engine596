@@ -1,5 +1,6 @@
 package com.searchsquad.engine596;
 
+import com.searchsquad.engine596.DTO.ResponseDTO;
 import com.searchsquad.engine596.DTO.SearchResult;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -29,10 +30,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.*;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 @RestController
@@ -49,16 +47,27 @@ public class Controller {
 
 
     @GetMapping("/search")
-    public ResponseEntity<List<SearchResult>> searchDocuments(@RequestParam String fieldName,
-                                                              @RequestParam String queryText,
-                                                              @RequestParam String dataset) {
+    public ResponseEntity<List<ResponseDTO>> searchDocuments(@RequestParam String fieldName,
+                                                             @RequestParam String queryText,
+                                                             @RequestParam String dataset) {
         try {
 
             List<SearchResult> searchResults = getSearchResults(fieldName, queryText, dataset, DEFAULT_NUM_RESULTS);
-
             if (searchResults == null) return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 
-            return new ResponseEntity<>(searchResults, HttpStatus.OK);
+            List<ResponseDTO> responseDTOList = new ArrayList<>();
+            Set<String> idSet = new HashSet<>();
+            for(SearchResult searchResult : searchResults) {
+                if(idSet.contains(searchResult.getId())) continue;
+                idSet.add(searchResult.getId());
+                ResponseDTO responseDTO = new ResponseDTO();
+                responseDTO.setTitle(searchResult.getTitle());
+                responseDTO.setAbstractText(searchResult.getAbstractText());
+                responseDTO.setRank(searchResult.getRank());
+                responseDTOList.add(responseDTO);
+            }
+
+            return new ResponseEntity<>(responseDTOList, HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);

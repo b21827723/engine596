@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Search Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    .search-container {
+      text-align: center;
+      margin-top: 50px;
+    }
+
+    .search-input {
+      padding: 10px;
+      width: 300px;
+      font-size: 16px;
+    }
+
+    .search-button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+
+    .results-container {
+      margin-top: 50px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      background-color: #f9f9f9;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .record-table {
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    .record-table td {
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="search-container">
+    <input type="text" id="searchInput" class="search-input" placeholder="Enter your search query">
+    <button id="searchButton" class="search-button">Search</button>
+    <div>
+      <input type="radio" id="radioTitle" name="searchType" value="title">
+      <label for="radioTitle">Title</label>
+      <input type="radio" id="radioAbstract" name="searchType" value="abstract">
+      <label for="radioAbstract">Abstract</label>
+      <input type="radio" id="radioFullText" name="searchType" value="text" checked>
+      <label for="radioFullText">Full Text</label>
+    </div>
+    <div>
+      <label for="datasetSelect">Dataset:</label>
+      <select id="datasetSelect">
+        <option value="AAPR">AAPR</option>
+        <option value="CISI">CISI</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="results-container" id="resultsContainer" style="display: none;"></div>
+
+  <script>
+    const searchButton = document.getElementById('searchButton');
+    const searchInput = document.getElementById('searchInput');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const datasetSelect = document.getElementById('datasetSelect');
+
+    searchButton.addEventListener('click', () => {
+      const query = searchInput.value.trim();
+      const searchType = document.querySelector('input[name="searchType"]:checked').value;
+      const dataset = datasetSelect.value;
+
+      if (query !== '') {
+        const url = `/search?fieldName=${searchType}&queryText=${encodeURIComponent(query)}&dataset=${dataset}`;
+
+        fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          resultsContainer.innerHTML = ''; // Clear previous results
+
+          // Iterate over each record
+          data.forEach(record => {
+            // Create a table for the record
+            const recordTable = document.createElement('table');
+            recordTable.className = 'record-table';
+
+            // Iterate over each field in the record
+            Object.keys(record).forEach(field => {
+              // Create a row for the field
+              const row = document.createElement('tr');
+
+              // Create cells for the field name and value
+              const fieldNameCell = document.createElement('td');
+              const fieldValueCell = document.createElement('td');
+
+              fieldNameCell.textContent = field;
+              fieldValueCell.textContent = record[field];
+
+              row.appendChild(fieldNameCell);
+              row.appendChild(fieldValueCell);
+
+              recordTable.appendChild(row);
+            });
+
+            // Append the record table to the results container
+            resultsContainer.appendChild(recordTable);
+          });
+
+          // Show the results container
+          resultsContainer.style.display = 'block';
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          resultsContainer.textContent = 'An error occurred while processing your request.';
+          resultsContainer.style.display = 'block';
+        });
+      }
+    });
+  </script>
+</body>
+</html>
